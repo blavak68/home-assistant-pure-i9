@@ -2,12 +2,12 @@
     "domain": "purei9",
     "name": "Pure i9",
     "version": "2.0.2",
-    "documentation": "https://github.com/Ekman/home-assistant-pure-i9",
-    "issue_tracker": "https://github.com/Ekman/home-assistant-pure-i9/issues",
+    "documentation": "https://github.com/blavak68/home-assistant-pure-i9",
+    "issue_tracker": "https://github.com/blavak68/home-assistant-pure-i9/issues",
     "dependencies": [],
-    "codeowners": ["Ekman"],
-    "requirements": ["purei9_unofficial==0.0.16"],
+    "codeowners": ["blavak68"],
+    "requirements": ["purei9_unofficial==0.2.2"],
     "iot_class": "cloud_polling",
     "config_flow": true,
-    "homeassistant": "2025.1.0"
+    "homeassistant": "2025.8"
 }
