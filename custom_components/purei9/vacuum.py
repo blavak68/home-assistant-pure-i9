@@ -10,7 +10,9 @@ from homeassistant.components.vacuum import (
     VacuumEntityFeature
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+# from homeassistant.const import CONF_PASSWORD, CONF_EMAIL, CONF_COUNTRY_CODE
 from homeassistant.const import CONF_PASSWORD, CONF_EMAIL, CONF_COUNTRY_CODE
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from purei9_unofficial.cloudv3 import CloudRobot
 from . import purei9, const, vacuum_command, exception, utility
 
@@ -26,9 +28,20 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Initial setup for the workers. Download and identify all workers."""
     data = hass.data[const.DOMAIN][config_entry.entry_id]
 
-    async_add_entities(
-        [PureI9(coord, coord.robot, coord.data) for coord in data[const.COORDINATORS]]
-    )
+#    async_add_entities(
+#        [PureI9(coord, coord.robot, coord.data) for coord in data[const.COORDINATORS]]
+#    )
+
+    vacuums: list[PureI9] = []
+    sensors: list[PureI9BatterySensor] = []
+    for coord in data[const.COORDINATORS]:
+        vacuum = PureI9(coord, coord.robot, coord.data)
+        vacuums.append(vacuum)
+        sensors.append(PureI9BatterySensor(coord, coord.robot, coord.data))
+
+    async_add_entities(vacuums + sensors)
+
+
 
 # pylint: disable=R0904
 class PureI9(CoordinatorEntity, StateVacuumEntity):
@@ -49,8 +62,8 @@ class PureI9(CoordinatorEntity, StateVacuumEntity):
         # Turn on, turn off and is on is not supported by vacuums anymore
         # See: https://github.com/home-assistant/core/issues/36503
         return (
-            VacuumEntityFeature.BATTERY
-            | VacuumEntityFeature.START
+#            VacuumEntityFeature.BATTERY
+            VacuumEntityFeature.START
             | VacuumEntityFeature.RETURN_HOME
             | VacuumEntityFeature.STOP
             | VacuumEntityFeature.PAUSE
@@ -74,10 +87,10 @@ class PureI9(CoordinatorEntity, StateVacuumEntity):
         """Name of the vacuum"""
         return self._params.name
 
-    @property
-    def battery_level(self) -> int:
-        """Battery level, between 0-100"""
-        return self._params.battery
+#    @property
+#    def battery_level(self) -> int:
+#        """Battery level, between 0-100"""
+#        return self._params.battery
 
     @property
     def activity(self) -> VacuumActivity:
@@ -245,3 +258,28 @@ class PureI9(CoordinatorEntity, StateVacuumEntity):
 
     def clean_spot(self, **kwargs):
         raise NotImplementedError
+		
+class PureI9BatterySensor(CoordinatorEntity, SensorEntity):
+    """Dedicated battery sensor for Pure i9 (replaces deprecated vacuum.battery_level)."""
+    def __init__(self, coordinator, robot: CloudRobot, params: purei9.Params) -> None:
+        super().__init__(coordinator)
+        self._robot = robot
+        self._params = params
+        self._attr_device_class = SensorDeviceClass.BATTERY
+        self._attr_native_unit_of_measurement = "%"
+        self._attr_has_entity_name = True
+        self._attr_name = "Battery"
+        self._attr_unique_id = f"{self._params.unique_id}_battery"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return purei9.create_device_attrs(self._params)
+
+    @property
+    def native_value(self) -> Optional[int]:
+        return self._params.battery
+
+    def _handle_coordinator_update(self) -> None:
+        params = self.coordinator.data
+        self._params.battery = params.battery
+        self.async_write_ha_state()
